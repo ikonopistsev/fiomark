@@ -78,7 +78,6 @@ read_arg() {
         ;;
         mmap)
             ENGINE=mmap
-	    THREAD=--thread
         ;;
         splice)
     	    ENGINE=splice
@@ -91,6 +90,9 @@ read_arg() {
         ;;
 	windowsaio)
 	    ENGINE=windowsaio
+	    THREAD=--thread
+	;;
+	thread)
 	    THREAD=--thread
 	;;
         *)
