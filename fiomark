@@ -83,6 +83,9 @@ read_arg() {
         mmap)
             ENGINE=mmap
         ;;
+        splice)
+    	    ENGINE=splice
+    	;;
         direct)
             DIRECTIO=1
         ;;
@@ -101,7 +104,7 @@ do
 done
 
 [[ -z $FILE ]] &&
-    echo "Usage: $0 {10m|16m|50m|64m|100m|128m|250m|256m|500m|512m|1000m|1024m|2000m|2048m} {parse} {posixaio|libaio|mmap} {direct} {zero} /test_path" &&
+    echo "Usage: $0 {10m|16m|50m|64m|100m|128m|250m|256m|500m|512m|1000m|1024m|2000m|2048m} {parse} {posixaio|libaio|mmap,splice} {direct} {zero} /test_path" &&
     exit 1
 
 S321=$DIR/".s321.json"
@@ -125,10 +128,10 @@ show_result() {
     WR=$(jq .jobs[].write.bw $1|jq -s ".|add/$D")
     RDI=$(jq .jobs[].read.iops $1|jq -s ".|add")
     WRI=$(jq .jobs[].write.iops $1|jq -s ".|add")
-    Q=$(jq -r -a '.jobs[0]."job options".iodepth' $1)
-    T=$(jq -r -a '.jobs[0]."job options".numjobs' $1)
-    S=$(jq -r -a '.jobs[0]."job options".bs' $1)
-    L=$(jq -r -a '.jobs[0]."job options".rw' $1)
+    Q=$(jq -r '.jobs[0]."job options".iodepth' $1)
+    T=$(jq -r '.jobs[0]."job options".numjobs' $1)
+    S=$(jq -r '.jobs[0]."job options".bs' $1)
+    L=$(jq -r '.jobs[0]."job options".rw' $1)
     E=$(jq -r '."global options".ioengine' $1)
     D=$(jq -r '."global options".direct' $1)
 
@@ -144,8 +147,8 @@ echo "Running..."
 
 [[ $PARSE -eq 0 ]] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
-        --name=SeqQ32T1Read --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=read \
-        --name=SeqQ32T1Write --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=write > $S321
+        --name=q32t1rd --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=read \
+        --name=q32t1wr --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=write > $S321
 
 [[ ! $? -eq 0 ]] && exit 1
 
@@ -155,8 +158,8 @@ show_result $S321
 
 [[ $PARSE -eq 0 ]] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
-        --name=4kq8t8Read --bs=4k --iodepth=8 --numjobs=8 --rw=randread \
-        --name=4kq8t8Write --bs=4k --iodepth=8 --numjobs=8 --rw=randwrite > $Q8T8
+        --name=4kq8t8rd --bs=4k --iodepth=8 --numjobs=8 --rw=randread \
+        --name=4kq8t8wr --bs=4k --iodepth=8 --numjobs=8 --rw=randwrite > $Q8T8
 
 [[ ! $? -eq 0 ]] && exit 1
 
@@ -164,8 +167,8 @@ show_result $Q8T8
 
 [[ $PARSE -eq 0 ]] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
-        --name=4kq32t1Read --bs=4k --iodepth=32 --numjobs=1 --rw=randread \
-        --name=4kq32t1Write --bs=4k --iodepth=32 --numjobs=1 --rw=randwrite > $Q32T1
+        --name=4kq32t1rd --bs=4k --iodepth=32 --numjobs=1 --rw=randread \
+        --name=4kq32t1wr --bs=4k --iodepth=32 --numjobs=1 --rw=randwrite > $Q32T1
 
 [[ ! $? -eq 0 ]] && exit 1
 
@@ -173,8 +176,8 @@ show_result $Q32T1
 
 [[ $PARSE -eq 0 ]] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
-        --name=4kq1t1Read --bs=4k --iodepth=1 --numjobs=1 --rw=randread \
-        --name=4kq1t1Write --bs=4k --iodepth=1 --numjobs=1 --rw=randwrite > $Q1T1
+        --name=4kq1t1rd --bs=4k --iodepth=1 --numjobs=1 --rw=randread \
+        --name=4kq1t1wr --bs=4k --iodepth=1 --numjobs=1 --rw=randwrite > $Q1T1
 
 [[ ! $? -eq 0 ]] && exit 1
 
