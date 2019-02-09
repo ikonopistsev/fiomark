@@ -7,7 +7,11 @@ DIRECTIO=1
 WRITEZERO=0
 ENGINE=posixaio
 
+#mac os locales
+LC_NUMERIC=C LC_COLLATE=C
+
 [[ -z $1 ]] && echo "Using: $0 /test_path" && exit 1
+[[ -z $2 ]] && PARSE=1
 
 FILE=$1/$TEST
 S321=$1/".s321.json"
