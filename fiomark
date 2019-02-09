@@ -1,0 +1,50 @@
+#!/bin/bash
+
+TEST=".test.fio"
+SIZE=1024
+LOOP=3
+DIRECTIO=0
+WRITEZERO=0
+
+[[ -z $1 ]] && echo "Using: $0 /test_path" && exit 1
+
+FILE=$1/$TEST
+S321=$1/".s321.json"
+Q8T8=$1/".q8t8.json"
+Q32T1=$1/".q32t1.json"
+Q1T1=$1/".q1t1.json"
+
+QSIZE=$(($SIZE/32))
+SIZE+=m
+QSIZE+=m
+RUNTIME=$(($LOOP * 30))
+
+echo "Size:$SIZE Loops:$LOOP"
+echo "Running Benchmark,  please wait..."
+
+fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=libaio --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
+--name=SeqQ32T1Read --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=read \
+--name=SeqQ32T1Write --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=write > $S321
+
+RD=$(cat $S321|jq .jobs[0].read.bw/1024)
+WR=$(cat $S321|jq .jobs[1].write.bw/1024)
+echo "                Read Mb/s  Write Mb/s"
+echo "Seq Q32T1:      $RD $WR"
+
+fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=libaio --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
+--name=4kq8t8Read --bs=4k --iodepth=8 --numjobs=8 --rw=randread \
+--name=4kq8t8Write --bs=4k --iodepth=8 --numjobs=8 --rw=randwrite > $Q8T8
+
+RD=$(cat $Q8T8|jq .jobs[0].read.bw/1024+.jobs[1].read.bw/1024+.jobs[2].read.bw/1024+.jobs[3].read.bw/1024+.jobs[4].read.bw/1024+.jobs[5].read.bw/1024+.jobs[6].read.bw/1024+.jobs[7].read.bw/1024)
+WR=$(cat $Q8T8|jq .jobs[8].write.bw/1024+.jobs[9].write.bw/1024+.jobs[10].write.bw/1024+.jobs[11].write.bw/1024+.jobs[12].write.bw/1024+.jobs[13].write.bw/1024+.jobs[14].write.bw/1024+.jobs[15].write.bw/1024)
+echo " 4k Q8T8:       $RD $WR"
+
+fio --runtqime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=libaio --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
+--name=4kq32t1Read --bs=4k --iodepth=32 --numjobs=1 --rw=randread \
+--name=4kq32t1Write --bs=4k --iodepth=32 --numjobs=1 --rw=randwrite > $Q32T1
+
+RD=$(cat $Q32T1|jq .jobs[0].read.bw/1024)
+WR=$(cat $Q32T1|jq .jobs[1].write.bw/1024)
+echo " 4k Q32T1:      $RD $WR"
+
+[[ -f $FILE ]] && /bin/rm $FILE
