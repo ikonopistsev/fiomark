@@ -14,6 +14,9 @@ PARSE=0
 #mac os locales
 LC_NUMERIC=C LC_COLLATE=C
 
+DIR="."
+FILE=$DIR/$TEST
+
 read_arg() {
     case "$1" in
         1)
@@ -106,7 +109,7 @@ do
     read_arg $var
 done
 
-[ -z $FILE ] &&
+[ ! -d $DIR ] &&
     echo "Usage: $0 {10m|16m|50m|64m|100m|128m|250m|256m|500m|512m|1000m|1024m|2000m|2048m} {parse} {posixaio|libaio|mmap,splice} {direct} {zero} /test_path" &&
     exit 1
 
@@ -126,7 +129,7 @@ show_result() {
     D=1000 # in crystal mark
     #D=1024
     
-    jq -r 'has("jobs")' $1 > null
+    N=$(jq -r 'has("jobs")' $1)
     [ $? -ne 0 ] && exit 1
     
     Q=$2
