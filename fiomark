@@ -128,6 +128,7 @@ show_result() {
     #D=1024
 
     RD=$(jq -r '.jobs[].read.bw' $1|jq -s ".|add/$D")
+    [ $? -ne 0 ] && exit 1
     WR=$(jq -r '.jobs[].write.bw' $1|jq -s ".|add/$D")
     RDI=$(jq -r '.jobs[].read.iops' $1|jq -s '.|add')
     WRI=$(jq -r '.jobs[].write.iops' $1|jq -s '.|add')
@@ -156,7 +157,7 @@ echo "Running..."
         --name=q32t1rd --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=read \
         --name=q32t1wr --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=write
 
-[ ! $? -eq 0 ] && [ $PARSE -eq 0 ] && exit 1
+[ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
 # windows output
 echo "                                                            "
@@ -169,7 +170,7 @@ show_result $S321
         --name=4kq8t8rd --bs=4k --iodepth=8 --numjobs=8 --rw=randread \
         --name=4kq8t8wr --bs=4k --iodepth=8 --numjobs=8 --rw=randwrite
 
-[ ! $? -eq 0 ] && [ $PARSE -eq 0 ] && exit 1
+[ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
 show_result $Q8T8 
 
@@ -178,7 +179,7 @@ show_result $Q8T8
         --name=4kq32t1rd --bs=4k --iodepth=32 --numjobs=1 --rw=randread \
         --name=4kq32t1wr --bs=4k --iodepth=32 --numjobs=1 --rw=randwrite
 
-[ ! $? -eq 0 ] && [ $PARSE -eq 0 ] && exit 1
+[ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
 show_result $Q32T1
 
@@ -187,7 +188,7 @@ show_result $Q32T1
         --name=4kq1t1rd --bs=4k --iodepth=1 --numjobs=1 --rw=randread \
         --name=4kq1t1wr --bs=4k --iodepth=1 --numjobs=1 --rw=randwrite
 
-[ ! $? -eq 0 ] && [ $PARSE -eq 0 ] && exit 1
+[ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
 show_result $Q1T1
 
