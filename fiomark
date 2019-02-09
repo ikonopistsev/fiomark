@@ -8,6 +8,8 @@ DIRECTIO=0
 WRITEZERO=0
 ENGINE=posixaio
 PARSE=0
+# windows fix
+#THREAD=--thread
 
 #mac os locales
 LC_NUMERIC=C LC_COLLATE=C
@@ -76,6 +78,7 @@ read_arg() {
         ;;
         mmap)
             ENGINE=mmap
+	    THREAD=--thread
         ;;
         splice)
     	    ENGINE=splice
@@ -86,8 +89,12 @@ read_arg() {
         zero)
             WRITEZERO=1
         ;;
+	windowsaio)
+	    ENGINE=windowsaio
+	    THREAD=--thread
+	;;
         *)
-            [[ -d "$1" ]] && DIR=$1 && FILE=$1/$TEST
+            [ -d "$1" ] && DIR=$1 && FILE=$1/$TEST
         ;;
     esac
 }
@@ -97,7 +104,7 @@ do
     read_arg $var
 done
 
-[[ -z $FILE ]] &&
+[ -z $FILE ] &&
     echo "Usage: $0 {10m|16m|50m|64m|100m|128m|250m|256m|500m|512m|1000m|1024m|2000m|2048m} {parse} {posixaio|libaio|mmap,splice} {direct} {zero} /test_path" &&
     exit 1
 
@@ -107,74 +114,79 @@ Q32T1=$DIR/".q32t1.json"
 Q1T1=$DIR/".q1t1.json"
 
 QSIZE=$(($SIZE/32))
-SIZE+=m
-QSIZE+=m
+SIZE=$SIZE"m"
+QSIZE=$QSIZE"m"
 RUNTIME=$(($LOOP*10))
 
 
 show_result() {
-    [[ ! -f $1 ]] && echo "no file: $1" && exit 1
+    [ ! -f $1 ] && echo "no file: $1" && exit 1
 
     D=1000 # in crystal mark
     #D=1024
 
-    RD=$(jq .jobs[].read.bw $1|jq -s ".|add/$D")
-    WR=$(jq .jobs[].write.bw $1|jq -s ".|add/$D")
-    RDI=$(jq .jobs[].read.iops $1|jq -s ".|add")
-    WRI=$(jq .jobs[].write.iops $1|jq -s ".|add")
+    RD=$(jq -r '.jobs[].read.bw' $1|jq -s ".|add/$D")
+    WR=$(jq -r '.jobs[].write.bw' $1|jq -s ".|add/$D")
+    RDI=$(jq -r '.jobs[].read.iops' $1|jq -s '.|add')
+    WRI=$(jq -r '.jobs[].write.iops' $1|jq -s '.|add')
     Q=$(jq -r '.jobs[0]."job options".iodepth' $1)
     T=$(jq -r '.jobs[0]."job options".numjobs' $1)
     S=$(jq -r '.jobs[0]."job options".bs' $1)
     L=$(jq -r '.jobs[0]."job options".rw' $1)
     E=$(jq -r '."global options".ioengine' $1)
     D=$(jq -r '."global options".direct' $1)
+    SZ=$(jq -r '."global options".size' $1)
 
-    [ "$L" == "read" ] && echo -n "seq " 
-    [ "$L" == "write" ] && echo -n "seq "
-    [ "$D" == 1 ] && echo -n "direct "
-    echo $E
-    printf "%10s\tQ%sT%b\t%12.1f %12.1f\n" $S $Q $T $RD $WR
-    printf "%10s\t%5s\t%12.0f %12.0f\n\n"  " " "iops" $RDI $WRI
+# windows output
+    echo "                                                            "
+    [ "$L" = "read" ] && echo -n "seq " 
+    [ "$L" = "write" ] && echo -n "seq "
+    [ "$D" = 1 ] && echo -n "direct "
+    echo $E $SZ
+    printf "%10s\tQ%sT%b\t%12.3f %12.3f\n" $S $Q $T $RD $WR
+    printf "%10s\t%5s\t%12.1f %12.1f\n"  " " "iops" $RDI $WRI
 }
 
 echo "Running..."
 
-[[ $PARSE -eq 0 ]] && 
-    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
+[ $PARSE = 0 ] && 
+    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD --output=$S321 \
         --name=q32t1rd --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=read \
-        --name=q32t1wr --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=write > $S321
+        --name=q32t1wr --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=write
 
-[[ ! $? -eq 0 ]] && [[ $PARSE -eq 0 ]] && exit 1
+[ ! $? -eq 0 ] && [ $PARSE -eq 0 ] && exit 1
 
+# windows output
+echo "                                                            "
 printf "%17s\t%12s %12s\n" " " "Read [MB/s]"  "Write [MB/s]"
 
-show_result $S321 
+show_result $S321
 
-[[ $PARSE -eq 0 ]] && 
-    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
+[ $PARSE = 0 ] && 
+    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD --output=$Q8T8 \
         --name=4kq8t8rd --bs=4k --iodepth=8 --numjobs=8 --rw=randread \
-        --name=4kq8t8wr --bs=4k --iodepth=8 --numjobs=8 --rw=randwrite > $Q8T8
+        --name=4kq8t8wr --bs=4k --iodepth=8 --numjobs=8 --rw=randwrite
 
-[[ ! $? -eq 0 ]] && [[ $PARSE -eq 0 ]] && exit 1
+[ ! $? -eq 0 ] && [ $PARSE -eq 0 ] && exit 1
 
 show_result $Q8T8 
 
-[[ $PARSE -eq 0 ]] && 
-    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
+[ $PARSE -eq 0 ] && 
+    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD --output=$Q32T1 \
         --name=4kq32t1rd --bs=4k --iodepth=32 --numjobs=1 --rw=randread \
-        --name=4kq32t1wr --bs=4k --iodepth=32 --numjobs=1 --rw=randwrite > $Q32T1
+        --name=4kq32t1wr --bs=4k --iodepth=32 --numjobs=1 --rw=randwrite
 
-[[ ! $? -eq 0 ]] && [[ $PARSE -eq 0 ]] && exit 1
+[ ! $? -eq 0 ] && [ $PARSE -eq 0 ] && exit 1
 
 show_result $Q32T1
 
-[[ $PARSE -eq 0 ]] && 
-    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
+[ $PARSE -eq 0 ] && 
+    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD --output=$Q1T1 \
         --name=4kq1t1rd --bs=4k --iodepth=1 --numjobs=1 --rw=randread \
-        --name=4kq1t1wr --bs=4k --iodepth=1 --numjobs=1 --rw=randwrite > $Q1T1
+        --name=4kq1t1wr --bs=4k --iodepth=1 --numjobs=1 --rw=randwrite
 
-[[ ! $? -eq 0 ]] && [[ $PARSE -eq 0 ]] && exit 1
+[ ! $? -eq 0 ] && [ $PARSE -eq 0 ] && exit 1
 
 show_result $Q1T1
 
-[[ -f $FILE ]] && rm $FILE
+[ -f $FILE ] && rm $FILE
