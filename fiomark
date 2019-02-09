@@ -125,23 +125,30 @@ show_result() {
 
     D=1000 # in crystal mark
     #D=1024
+    
+    jq -r 'has("jobs")' $1 > null
+    [ $? -ne 0 ] && exit 1
+    
+    Q=$2
+    T=$3
+    S=$4
+    L=$5
 
     RD=$(jq -r '.jobs[].read.bw' $1|jq -s ".|add/$D")
-    [ $? -ne 0 ] && exit 1
     WR=$(jq -r '.jobs[].write.bw' $1|jq -s ".|add/$D")
     RDI=$(jq -r '.jobs[].read.iops' $1|jq -s '.|add')
     WRI=$(jq -r '.jobs[].write.iops' $1|jq -s '.|add')
-    Q=$(jq -r '.jobs[0]."job options".iodepth' $1)
-    T=$(jq -r '.jobs[0]."job options".numjobs' $1)
-    S=$(jq -r '.jobs[0]."job options".bs' $1)
-    L=$(jq -r '.jobs[0]."job options".rw' $1)
-    E=$(jq -r '."global options".ioengine' $1)
-    D=$(jq -r '."global options".direct' $1)
-    SZ=$(jq -r '."global options".size' $1)
-    [ "$L" = "read" ] && echo -n "seq " 
-    [ "$L" = "write" ] && echo -n "seq "
-    [ "$D" = 1 ] && echo -n "direct "
-    echo $E $SZ
+    #Q=$(jq -r '.jobs[0]."job options".iodepth' $1)
+    #T=$(jq -r '.jobs[0]."job options".numjobs' $1)
+    #S=$(jq -r '.jobs[0]."job options".bs' $1)
+    #L=$(jq -r '.jobs[0]."job options".rw' $1)
+    #E=$(jq -r '."global options".ioengine' $1)
+    #D=$(jq -r '."global options".direct' $1)
+    #SZ=$(jq -r '."global options".size' $1)
+    #[ "$L" = "read" ] && echo -n "seq " 
+    #[ "$L" = "write" ] && echo -n "seq "
+    #[ "$D" = 1 ] && echo -n "direct "
+    #echo $E $SZ
     printf "%10s\tQ%sT%b\t%12.3f %12.3f\n" $S $Q $T $RD $WR
     printf "%10s\t%5s\t%12.1f %12.1f\n\n"  " " "iops" $RDI $WRI
 }
@@ -157,7 +164,7 @@ echo "Running..."
 
 printf "%17s\t%12s %12s\n" " " "Read [MB/s]"  "Write [MB/s]"
 
-show_result $S321
+show_result $S321 32 1 $QSIZE read
 
 [ $PARSE = 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
@@ -166,7 +173,7 @@ show_result $S321
 
 [ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
-show_result $Q8T8 
+show_result $Q8T8 8 8 4k randread
 
 [ $PARSE -eq 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
@@ -175,7 +182,7 @@ show_result $Q8T8
 
 [ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
-show_result $Q32T1
+show_result $Q32T1 32 1 4k randread
 
 [ $PARSE -eq 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
@@ -184,6 +191,6 @@ show_result $Q32T1
 
 [ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
-show_result $Q1T1
+show_result $Q1T1 1 1 4k randread
 
 [ -f $FILE ] && rm $FILE
