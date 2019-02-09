@@ -139,54 +139,49 @@ show_result() {
     E=$(jq -r '."global options".ioengine' $1)
     D=$(jq -r '."global options".direct' $1)
     SZ=$(jq -r '."global options".size' $1)
-
-# windows output
-    echo "                                                            "
     [ "$L" = "read" ] && echo -n "seq " 
     [ "$L" = "write" ] && echo -n "seq "
     [ "$D" = 1 ] && echo -n "direct "
     echo $E $SZ
     printf "%10s\tQ%sT%b\t%12.3f %12.3f\n" $S $Q $T $RD $WR
-    printf "%10s\t%5s\t%12.1f %12.1f\n"  " " "iops" $RDI $WRI
+    printf "%10s\t%5s\t%12.1f %12.1f\n\n"  " " "iops" $RDI $WRI
 }
 
 echo "Running..."
 
 [ $PARSE = 0 ] && 
-    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD --output=$S321 \
+    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
         --name=q32t1rd --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=read \
-        --name=q32t1wr --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=write
+        --name=q32t1wr --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=write > $S321
 
 [ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
-# windows output
-echo "                                                            "
 printf "%17s\t%12s %12s\n" " " "Read [MB/s]"  "Write [MB/s]"
 
 show_result $S321
 
 [ $PARSE = 0 ] && 
-    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD --output=$Q8T8 \
+    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
         --name=4kq8t8rd --bs=4k --iodepth=8 --numjobs=8 --rw=randread \
-        --name=4kq8t8wr --bs=4k --iodepth=8 --numjobs=8 --rw=randwrite
+        --name=4kq8t8wr --bs=4k --iodepth=8 --numjobs=8 --rw=randwrite > $Q8T8
 
 [ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
 show_result $Q8T8 
 
 [ $PARSE -eq 0 ] && 
-    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD --output=$Q32T1 \
+    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
         --name=4kq32t1rd --bs=4k --iodepth=32 --numjobs=1 --rw=randread \
-        --name=4kq32t1wr --bs=4k --iodepth=32 --numjobs=1 --rw=randwrite
+        --name=4kq32t1wr --bs=4k --iodepth=32 --numjobs=1 --rw=randwrite > $Q32T1 
 
 [ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
 show_result $Q32T1
 
 [ $PARSE -eq 0 ] && 
-    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD --output=$Q1T1 \
+    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
         --name=4kq1t1rd --bs=4k --iodepth=1 --numjobs=1 --rw=randread \
-        --name=4kq1t1wr --bs=4k --iodepth=1 --numjobs=1 --rw=randwrite
+        --name=4kq1t1wr --bs=4k --iodepth=1 --numjobs=1 --rw=randwrite > $Q1T1 
 
 [ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
