@@ -1,80 +1,160 @@
 #!/bin/bash
 
 TEST=".test.fio"
+
 SIZE=1024
 LOOP=3
-DIRECTIO=1
+DIRECTIO=0
 WRITEZERO=0
 ENGINE=posixaio
-#ENGINE=mmap
+PARSE=0
 
 #mac os locales
 LC_NUMERIC=C LC_COLLATE=C
 
-[[ -z $1 ]] && echo "Using: $0 /test_path" && exit 1
-[[ -z $2 ]] && PARSE=1
+read_arg() {
+    case "$1" in
+        1)
+            LOOP=1
+        ;;
+        2)
+            LOOP=2
+        ;;
+        3)
+            LOOP=3
+        ;;
+        4)
+            LOOP=4
+        ;;
+        5)
+            LOOP=5
+        ;;
+        10m)
+            SIZE=10m
+        ;;
+        16m)
+            SIZE=16m
+        ;;
+        50m)
+            SIZE=50m
+        ;;
+        64m)
+            SIZE=64m
+        ;;
+        100m)
+            SIZE=100m
+        ;;
+        128m)
+            SIZE=128m
+        ;;
+        250m)
+            SIZE=250m
+        ;;
+        256m)
+            SIZE=256m
+        ;;
+        500m)
+            SIZE=500m
+        ;;
+        512m)
+            SIZE=512m
+        ;;
+        1000m)
+            SIZE=1000m
+        ;;
+        1024m)
+            SIZE=1024m
+        ;;
+        2000m)
+            SIZE=2000m
+        ;;
+        2048m)
+            SIZE=2048m
+        ;;
+        parse)
+            PARSE=1
+        ;;
+        posixaio)
+            ENGINE=posixaio
+        ;;
+        libaio)
+            ENGINE=libaio
+        ;;
+        mmap)
+            ENGINE=mmap
+        ;;
+        direct)
+            DIRECTIO=1
+        ;;
+        zero)
+            WRITEZERO=1
+        ;;
+        *)
+            [[ -d "$1" ]] && DIR=$1 && FILE=$1/$TEST
+        ;;
+    esac
+}
 
-FILE=$1/$TEST
-S321=$1/".s321.json"
-Q8T8=$1/".q8t8.json"
-Q32T1=$1/".q32t1.json"
-Q1T1=$1/".q1t1.json"
+for var in "$@"
+do
+    read_arg $var
+done
+
+[[ -z $FILE ]] &&
+    echo "Usage: $0 {10m|16m|50m|64m|100m|128m|250m|256m|500m|512m|1000m|1024m|2000m|2048m} {parse} {posixaio|libaio|mmap} {direct} {zero} /test_path" &&
+    exit 1
+
+S321=$DIR/".s321.json"
+Q8T8=$DIR/".q8t8.json"
+Q32T1=$DIR/".q32t1.json"
+Q1T1=$DIR/".q1t1.json"
 
 QSIZE=$(($SIZE/32))
 SIZE+=m
 QSIZE+=m
 RUNTIME=$(($LOOP*10))
 
+
+show_result() {
+    [[ ! -f $2 ]] && echo "no file: $2" && exit 1
+
+    D=1000 # in crystal mark
+    #D=1024
+
+    RD=$(jq .jobs[].read.bw $2|jq -s ".|add/$D")
+    WR=$(jq .jobs[].write.bw  $2|jq -s ".|add/$D")
+    RDI=$(jq .jobs[].read.iops  $2|jq -s ".|add")
+    WRI=$(jq .jobs[].write.iops $2|jq -s ".|add")
+    printf "%10s %12.1f %12.1f\n" "$1" $RD $WR
+    printf "%10s %12.0f %12.0f\n\n" "iops:" $RDI $WRI
+}
+
 echo "Size:$SIZE Loop:$LOOP Direct:$DIRECTIO Engine:$ENGINE"
 echo "Running..."
 
-fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
+[[ $PARSE -eq 0 ]] && fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
 --name=SeqQ32T1Read --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=read \
 --name=SeqQ32T1Write --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=write > $S321
 
-D=1000 # in crystal mark
-#D=1024
-RD=$(cat $S321|jq .jobs[0].read.bw/$D)
-WR=$(cat $S321|jq .jobs[1].write.bw/$D)
-RDI=$(cat $S321|jq .jobs[0].read.iops)
-WRI=$(cat $S321|jq .jobs[1].write.iops)
-
 printf "%10s %12s %12s\n" " " "Read [MB/s]"  "Write [MB/s]"
-printf "%10s %12.1f %12.1f\n" "Seq Q32T1:" $RD $WR
-printf "%10s %12.0f %12.0f\n\n" "iops:" $RDI $WRI
+show_result "Seq Q32T1:" $S321 
 
-fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
+[[ $PARSE -eq 0 ]] && fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
 --name=4kq8t8Read --bs=4k --iodepth=8 --numjobs=8 --rw=randread \
 --name=4kq8t8Write --bs=4k --iodepth=8 --numjobs=8 --rw=randwrite > $Q8T8
 
-RD=$(cat $Q8T8|jq .jobs[0].read.bw/$D+.jobs[1].read.bw/$D+.jobs[2].read.bw/$D+.jobs[3].read.bw/$D+.jobs[4].read.bw/$D+.jobs[5].read.bw/$D+.jobs[6].read.bw/$D+.jobs[7].read.bw/$D)
-WR=$(cat $Q8T8|jq .jobs[8].write.bw/$D+.jobs[9].write.bw/$D+.jobs[10].write.bw/$D+.jobs[11].write.bw/$D+.jobs[12].write.bw/$D+.jobs[13].write.bw/$D+.jobs[14].write.bw/$D+.jobs[15].write.bw/$D)
-RDI=$(cat $Q8T8|jq .jobs[0].read.iops+.jobs[1].read.iops+.jobs[2].read.iops+.jobs[3].read.iops+.jobs[4].read.iops+.jobs[5].read.iops+.jobs[6].read.iops+.jobs[7].read.iops)
-WRI=$(cat $Q8T8|jq .jobs[8].write.iops+.jobs[9].write.iops+.jobs[10].write.iops+.jobs[11].write.iops+.jobs[12].write.iops+.jobs[13].write.iops+.jobs[14].write.iops+.jobs[15].write.iops)
-printf "%10s %12.1f %12.1f\n" "4k Q8T8:" $RD $WR
-printf "%10s %12.0f %12.0f\n\n" "iops:" $RDI $WRI
+show_result "4k Q8T8:" $Q8T8 
 
-fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
+[[ $PARSE -eq 0 ]] && fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
 --name=4kq32t1Read --bs=4k --iodepth=32 --numjobs=1 --rw=randread \
 --name=4kq32t1Write --bs=4k --iodepth=32 --numjobs=1 --rw=randwrite > $Q32T1
 
-RD=$(cat $Q32T1|jq .jobs[0].read.bw/$D)
-WR=$(cat $Q32T1|jq .jobs[1].write.bw/$D)
-RDI=$(cat $Q32T1|jq .jobs[0].read.iops)
-WRI=$(cat $Q32T1|jq .jobs[1].write.iops)
-printf "%10s %12.1f %12.1f\n" "4k Q32T1:" $RD $WR
-printf "%10s %12.0f %12.0f\n\n" "iops:" $RDI $WRI
+show_result "4k Q32T1:" $Q32T1
 
-
-fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
+[[ $PARSE -eq 0 ]] && fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json \
 --name=4kq1t1Read --bs=4k --iodepth=1 --numjobs=1 --rw=randread \
 --name=4kq1t1Write --bs=4k --iodepth=1 --numjobs=1 --rw=randwrite > $Q1T1
 
-RD=$(cat $Q1T1|jq .jobs[0].read.bw/$D)
-WR=$(cat $Q1T1|jq .jobs[1].write.bw/$D)
-RDI=$(cat $Q1T1|jq .jobs[0].read.iops)
-WRI=$(cat $Q1T1|jq .jobs[1].write.iops)
-printf "%10s %12.1f %12.1f\n" "4k Q1T1:" $RD $WR
-printf "%10s %12.0f %12.0f\n\n" "iops:" $RDI $WRI
+show_result "4k Q1T1:" $Q1T1
 
 [[ -f $FILE ]] && rm $FILE
