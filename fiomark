@@ -29,12 +29,6 @@ read_arg() {
         5)
             LOOP=5
         ;;
-        10m)
-            SIZE=10
-        ;;
-        16m)
-            SIZE=16
-        ;;
         50m)
             SIZE=50
         ;;
@@ -150,7 +144,7 @@ echo "Running..."
         --name=q32t1rd --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=read \
         --name=q32t1wr --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=write > $S321
 
-[[ ! $? -eq 0 ]] && exit 1
+[[ ! $? -eq 0 ]] && [[ $PARSE -eq 0 ]] && exit 1
 
 printf "%17s\t%12s %12s\n" " " "Read [MB/s]"  "Write [MB/s]"
 
@@ -161,7 +155,7 @@ show_result $S321
         --name=4kq8t8rd --bs=4k --iodepth=8 --numjobs=8 --rw=randread \
         --name=4kq8t8wr --bs=4k --iodepth=8 --numjobs=8 --rw=randwrite > $Q8T8
 
-[[ ! $? -eq 0 ]] && exit 1
+[[ ! $? -eq 0 ]] && [[ $PARSE -eq 0 ]] && exit 1
 
 show_result $Q8T8 
 
@@ -170,7 +164,7 @@ show_result $Q8T8
         --name=4kq32t1rd --bs=4k --iodepth=32 --numjobs=1 --rw=randread \
         --name=4kq32t1wr --bs=4k --iodepth=32 --numjobs=1 --rw=randwrite > $Q32T1
 
-[[ ! $? -eq 0 ]] && exit 1
+[[ ! $? -eq 0 ]] && [[ $PARSE -eq 0 ]] && exit 1
 
 show_result $Q32T1
 
@@ -179,7 +173,7 @@ show_result $Q32T1
         --name=4kq1t1rd --bs=4k --iodepth=1 --numjobs=1 --rw=randread \
         --name=4kq1t1wr --bs=4k --iodepth=1 --numjobs=1 --rw=randwrite > $Q1T1
 
-[[ ! $? -eq 0 ]] && exit 1
+[[ ! $? -eq 0 ]] && [[ $PARSE -eq 0 ]] && exit 1
 
 show_result $Q1T1
 
