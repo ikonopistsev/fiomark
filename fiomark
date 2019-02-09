@@ -69,7 +69,7 @@ RD=$(cat $Q1T1|jq .jobs[0].read.bw/$D)
 WR=$(cat $Q1T1|jq .jobs[1].write.bw/$D)
 RDI=$(cat $Q1T1|jq .jobs[0].read.iops)
 WRI=$(cat $Q1T1|jq .jobs[1].write.iops)
-printf "%10s %10.3f %10.3f\n" "4k Q32T1:" $RD $WR
+printf "%10s %10.3f %10.3f\n" "4k Q1T1:" $RD $WR
 printf "%10s %10.0f %10.0f\n\n" "iops:" $RDI $WRI
 
-[[ -f $FILE ]] && /bin/rm $FILE
+[[ -f $FILE ]] && rm $FILE
