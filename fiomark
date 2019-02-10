@@ -15,7 +15,7 @@ PARSE=0
 LC_NUMERIC=C LC_COLLATE=C
 
 if [ -z $HOME ]; then
-#windows
+# windows
     HOME_DIR=$HOMEDRIVE$HOMEPATH
 else
     HOME_DIR=$HOME	
