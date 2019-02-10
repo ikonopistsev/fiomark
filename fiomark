@@ -35,6 +35,15 @@ read_arg() {
         5)
             LOOP=5
         ;;
+        8k)
+            BLOCK_SIZE=8
+        ;;
+        16k)
+            BLOCK_SIZE=16
+        ;;
+        32k)
+            BLOCK_SIZE=32
+        ;;
         64k)
             BLOCK_SIZE=64
         ;;
