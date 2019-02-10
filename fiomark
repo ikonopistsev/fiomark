@@ -92,6 +92,9 @@ read_arg() {
         2048m)
             SIZE=2048
         ;;
+	20g)
+	    SIZE=20480
+	;;
         parse)
             PARSE=1
         ;;
