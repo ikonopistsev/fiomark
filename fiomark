@@ -12,7 +12,7 @@ ENGINE=posixaio
 PARSE=0
 # windows fix
 #THREAD=--thread
-
+BLOCK_SIZE=4
 
 if [ -z $HOME ]; then
 # windows
@@ -34,6 +34,18 @@ read_arg() {
         ;;
         5)
             LOOP=5
+        ;;
+        64k)
+            BLOCK_SIZE=64
+        ;;
+        128k)
+            BLOCK_SIZE=128
+        ;;
+        256k)
+            BLOCK_SIZE=256
+        ;;
+        512k)
+            BLOCK_SIZE=512
         ;;
         50m)
             SIZE=50
@@ -125,6 +137,7 @@ QSIZE=$(($SIZE/32))
 SIZE=$SIZE"m"
 QSIZE=$QSIZE"m"
 RUNTIME=$(($LOOP*5))
+BLOCK_SIZE=$BLOCK_SIZE"k"
 
 show_result() {
     [ ! -f $1 ] && echo "no file: $1" && exit 1
@@ -187,29 +200,29 @@ show_result $S321 32 1 $QSIZE read
 
 [ $PARSE = 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename=$TEST_FILE --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
-        --name=4kq8t8rd --bs=4k --iodepth=8 --numjobs=8 --rw=randread \
-        --name=4kq8t8wr --bs=4k --iodepth=8 --numjobs=8 --rw=randwrite > $Q8T8
+        --name=4kq8t8rd --bs=$BLOCK_SIZE --iodepth=8 --numjobs=8 --rw=randread \
+        --name=4kq8t8wr --bs=$BLOCK_SIZE --iodepth=8 --numjobs=8 --rw=randwrite > $Q8T8
 
 [ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
-show_result $Q8T8 8 8 4k randread
+show_result $Q8T8 8 8 $BLOCK_SIZE randread
 
 [ $PARSE -eq 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename=$TEST_FILE --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
-        --name=4kq32t1rd --bs=4k --iodepth=32 --numjobs=1 --rw=randread \
-        --name=4kq32t1wr --bs=4k --iodepth=32 --numjobs=1 --rw=randwrite > $Q32T1 
+        --name=4kq32t1rd --bs=$BLOCK_SIZE --iodepth=32 --numjobs=1 --rw=randread \
+        --name=4kq32t1wr --bs=$BLOCK_SIZE --iodepth=32 --numjobs=1 --rw=randwrite > $Q32T1 
 
 [ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
-show_result $Q32T1 32 1 4k randread
+show_result $Q32T1 32 1 $BLOCK_SIZE randread
 
 [ $PARSE -eq 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename=$TEST_FILE --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
-        --name=4kq1t1rd --bs=4k --iodepth=1 --numjobs=1 --rw=randread \
-        --name=4kq1t1wr --bs=4k --iodepth=1 --numjobs=1 --rw=randwrite > $Q1T1 
+        --name=4kq1t1rd --bs=$BLOCK_SIZE --iodepth=1 --numjobs=1 --rw=randread \
+        --name=4kq1t1wr --bs=$BLOCK_SIZE --iodepth=1 --numjobs=1 --rw=randwrite > $Q1T1 
 
 [ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
-show_result $Q1T1 1 1 4k randread
+show_result $Q1T1 1 1 $BLOCK_SIZE randread
 
 [ -f $TEST_FILE ] && rm $TEST_FILE
