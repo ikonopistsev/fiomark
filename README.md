@@ -2,6 +2,7 @@
 crystal mark analog with fio
 
 require:
+
                 fio https://bluestop.org/fio/
                 
                 jq https://stedolan.github.io/jq/download/ (rename to jq.exe, and story near fiomark script)
@@ -11,15 +12,18 @@ require:
 using:
 
 linux
-./fiomark direct libaio /test_path
+
+                ./fiomark direct libaio /test_path
 
 macosx
-./fiomark derect /test_path
+
+                ./fiomark derect /test_path
 
 windows
-./fiomark direct windowsaio /test_path (but /test_path is broken in my fio, you can copy script to test directory)
 
-./fiomark parse - show saved result (it saved to $HOME/.fiomark*)
+                ./fiomark direct windowsaio /test_path (but /test_path is broken in my fio, you can copy script to test directory)
+
+                ./fiomark parse - show saved result (it saved to $HOME/.fiomark*)
 
 example:
 
