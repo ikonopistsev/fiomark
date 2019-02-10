@@ -23,7 +23,9 @@ windows
 
                 ./fiomark direct windowsaio /test_path (but /test_path is broken in my fio, you can copy script to test directory)
 
-                ./fiomark parse - show saved result (it saved to $HOME/.fiomark*)
+show stored results (it saved to $HOME/.fiomark*)
+
+                ./fiomark parse
 
 example:
 
