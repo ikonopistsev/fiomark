@@ -156,8 +156,9 @@ show_result() {
     #[ "$L" = "write" ] && echo -n "seq "
     #[ "$D" = 1 ] && echo -n "direct "
     #echo $E $SZ
-    printf "%10s\tQ%sT%b\t%12.3f %12.3f\n" $S $Q $T $RD $WR
-    printf "%10s\t%5s\t%12.1f %12.1f\n\n"  " " "iops" $RDI $WRI
+    OPT="Q"$Q"T"$T
+    printf "%7s\t%7s\t%12.3f %12.3f\n" $S $OPT $RD $WR
+    printf "%7s\t%7s\t%12.1f %12.1f\n\n"  " " "iops" $RDI $WRI
 }
 
 if [ $PARSE = 0 ]; then
@@ -178,7 +179,7 @@ echo "Running..."
 
 [ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
 
-printf "%17s\t%12s %12s\n" " " "Read [MB/s]"  "Write [MB/s]"
+printf "%7s\t%7s\t%12s %12s\n" " " " " "Read [MB/s]"  "Write [MB/s]"
 
 show_result $S321 32 1 $QSIZE read
 
