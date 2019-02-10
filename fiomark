@@ -83,17 +83,17 @@ read_arg() {
         1000m)
             SIZE=1000
         ;;
-        1024m)
+        1g)
             SIZE=1024
         ;;
-        2000m)
-            SIZE=2000
-        ;;
-        2048m)
+        2g)
             SIZE=2048
         ;;
-	20g)
-	    SIZE=20480
+        4g)
+            SIZE=4096
+        ;;
+	8g)
+	    SIZE=8192
 	;;
         parse)
             PARSE=1
