@@ -1,7 +1,7 @@
 # fiomark
 crystal mark analog with fio
 
-require:
+require fio jq bash (windows links)
 
                 fio https://bluestop.org/fio/
                 
