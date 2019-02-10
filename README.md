@@ -2,7 +2,9 @@
 crystal mark analog with fio
 
 require:
-fio jq bash
+        fio https://bluestop.org/fio/
+        jq https://stedolan.github.io/jq/download/ (rename to jq, and story near fiomark script)
+        bash https://sourceforge.net/projects/win-bash/files/win-bash/0.6/ (rename to bash, and story near fiomark script)
 
 using:
 
