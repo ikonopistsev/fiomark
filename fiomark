@@ -1,5 +1,7 @@
 #!/bin/bash
 
+LC_ALL=C
+
 TEST=".fiomark.test"
 
 SIZE=1024
@@ -11,14 +13,12 @@ PARSE=0
 # windows fix
 #THREAD=--thread
 
-#mac os locales
-LC_NUMERIC=C LC_COLLATE=C
 
 if [ -z $HOME ]; then
 # windows
     HOME_DIR=$HOMEDRIVE$HOMEPATH
 else
-    HOME_DIR=$HOME	
+    HOME_DIR=$HOME
 fi
 
 TEST_DIR="."
