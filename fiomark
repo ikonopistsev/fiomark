@@ -2,8 +2,6 @@
 
 LC_ALL=C
 
-TEST=".fiomark.test"
-
 SIZE=1024
 LOOP=3
 DIRECTIO=0
@@ -14,7 +12,14 @@ PARSE=0
 #THREAD=--thread
 BLOCK_SIZE=4
 SEC=5
+SEQ=1
+TEST_DIR="."
+TEST_NAME=".fiomark.test"
+TEST_FILE=$TEST_DIR/$TEST_NAME
+BLOCKDEV=0
+F=0
 
+#detect home
 if [ -z $HOME ]; then
 # windows
     HOME_DIR=$HOMEDRIVE$HOMEPATH
@@ -22,8 +27,12 @@ else
     HOME_DIR=$HOME
 fi
 
-TEST_DIR="."
-TEST_FILE=$TEST_DIR/$TEST
+#reports
+HEADER=$HOME_DIR/".fiomark"
+S321=$HOME_DIR/".fiomark1"
+Q8T8=$HOME_DIR/".fiomark2"
+Q32T1=$HOME_DIR/".fiomark3"
+Q1T1=$HOME_DIR/".fiomark4"
 
 read_arg() {
     case "$1" in
@@ -93,21 +102,22 @@ read_arg() {
         4g)
             SIZE=4096
         ;;
-	8g)
-	    SIZE=8192
-	;;
-	16g)
-	    SIZE=16384
-	    SEC=10
-	;;
-	32g)
-	    SIZE=32768
-	    SEC=20
-	;;
-	64g)
-	    SIZE=65536
-	    SEC=30
-	;;
+        8g)
+            SIZE=8192
+            SEC=10
+        ;;
+        16g)
+            SIZE=16384
+            SEC=20
+        ;;
+        32g)
+            SIZE=32768
+            SEC=30
+        ;;
+        64g)
+            SIZE=65536
+            SEC=60
+        ;;
         parse)
             PARSE=1
         ;;
@@ -129,41 +139,72 @@ read_arg() {
         zero)
             WRITEZERO=1
         ;;
-	windowsaio)
-	    ENGINE=windowsaio
-	    THREAD=--thread
-	;;
-	thread)
-	    THREAD=--thread
-	;;
+	    windowsaio)
+            ENGINE=windowsaio
+            THREAD=--thread
+        ;;
+        thread)
+            THREAD=--thread
+        ;;
+        noseq)
+            SEQ=0
+        ;;
+        help)
+            echo "Usage: $0 loop={1|3|5|} size={50m|64m|100m|128m|250m|256m|500m|512m|1000m|1024m|2000m|2048m}" &&
+            echo "       engine={posixaio|libaio|mmap,windowsaio,splice} {thread,direct,zero} /test_dir" &&
+            exit 1
+        ;;
         *)
-	    [ -b "$1" ] && TEST_FILE=$1 && TEST_DIR="" && F=1
-            [ -d "$1" ] && TEST_DIR=$1 && TEST_FILE=$TEST_DIR/$TEST
+            if [ -b "$1" ]; then
+                TEST_FILE=$1
+                TEST_DIR=$1
+                BLOCKDEV=1
+                F=1
+            else
+                if [ -f "$1" ]; then
+                    TEST_FILE=$1
+                    TEST_DIR=$1
+                    BLOCKDEV=0
+                    F=1
+                else
+                    if [ -d "$1" ]; then
+                        TEST_DIR="$1"
+                        TEST_FILE=$1/$TEST_NAME
+                        BLOCKDEV=0
+                        F=0                        
+                    fi
+                fi
+            fi
         ;;
     esac
 }
 
+#parse args
 for var in "$@"
 do
     read_arg $var
 done
 
-if [ $F -eq 1 ]; then
-    echo "overwrite file $TEST_FILE? [y]"
-    read -n1 ANS
-    [ $ANS != "y" ] && exit 1
-else
-    [ ! -d "$TEST_DIR" ] &&
-	echo "Usage: $0 loop={1|3|5|} size={50m|64m|100m|128m|250m|256m|500m|512m|1000m|1024m|2000m|2048m}" &&
-	echo "       engine={posixaio|libaio|mmap,windowsaio,splice} {thread,direct,zero} /test_dir" &&
-	exit 1
-fi
 
-HEADER=$HOME_DIR/".fiomark"
-S321=$HOME_DIR/".fiomark1"
-Q8T8=$HOME_DIR/".fiomark2"
-Q32T1=$HOME_DIR/".fiomark3"
-Q1T1=$HOME_DIR/".fiomark4"
+#show menu :)
+if [ $PARSE = 0 ]; then
+    if [ $BLOCKDEV = 1 ]; then
+        echo -n "use blockdev $TEST_FILE ? [y/N] "
+        read -n1 ANS && [ $ANS != "y" ] && exit 1
+        echo ""
+    else
+        if [ $F = 1 ]; then 
+            echo -n "overwrite file $TEST_FILE ? [y/N] "
+            read -n1 ANS && [ $ANS != "y" ] && exit 1
+            echo ""
+        else
+            if [ ! -d $TEST_DIR ]; then
+                echo "Error path: $TEST_DIR"
+                exit 1
+            fi
+        fi
+    fi
+fi
 
 QSIZE=$(($SIZE/32))
 SIZE=$SIZE"m"
@@ -173,20 +214,17 @@ BLOCK_SIZE=$BLOCK_SIZE"k"
 
 show_result() {
     [ ! -f $1 ] && echo "no file: $1" && exit 1
+    
+    P=$(jq -r .time $1)
+    [ $? -ne 0 ] && exit 1
 
-    D=1000 # in crystal mark
-    #D=1024
-    
-#    N=$(jq -r 'has("jobs")' $1)
-#    [ $? -ne 0 ] && exit 1
-    
+    D=1000 # in crystal mark   
     Q=$2
     T=$3
     S=$4
     L=$5
 
     RD=$(jq -r '.jobs[].read.bw' $1|jq -s ".|add/$D")
-    [ $? -ne 0 ] && exit 1
     WR=$(jq -r '.jobs[].write.bw' $1|jq -s ".|add/$D")
     RDI=$(jq -r '.jobs[].read.iops' $1|jq -s '.|add')
     WRI=$(jq -r '.jobs[].write.iops' $1|jq -s '.|add')
@@ -217,12 +255,10 @@ fi
 
 echo "Running..."
 
-[ $PARSE = 0 ] && 
+[ $PARSE = 0 ] && [ $SEQ = 1 ] &&
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$TEST_FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
         --name=q32t1rd --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=read \
-        --name=q32t1wr --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=write > $S321
-
-[ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
+        --name=q32t1wr --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=write > $S321 && [ $? != 0 ] && exit 1
 
 printf "%7s\t%7s\t%12s %12s\n" " " " " "Read [MB/s]"  "Write [MB/s]"
 
@@ -233,28 +269,22 @@ show_result $S321 32 1 $QSIZE read
 [ $PARSE = 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename=$TEST_FILE --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
         --name=4kq8t8rd --bs=$BLOCK_SIZE --iodepth=8 --numjobs=8 --rw=randread \
-        --name=4kq8t8wr --bs=$BLOCK_SIZE --iodepth=8 --numjobs=8 --rw=randwrite > $Q8T8
-
-[ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
+        --name=4kq8t8wr --bs=$BLOCK_SIZE --iodepth=8 --numjobs=8 --rw=randwrite > $Q8T8 && [ $? != 0 ] && exit 1
 
 show_result $Q8T8 8 8 $BLOCK_SIZE randread
 
-[ $PARSE -eq 0 ] && 
+[ $PARSE = 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename=$TEST_FILE --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
         --name=4kq32t1rd --bs=$BLOCK_SIZE --iodepth=32 --numjobs=1 --rw=randread \
-        --name=4kq32t1wr --bs=$BLOCK_SIZE --iodepth=32 --numjobs=1 --rw=randwrite > $Q32T1 
-
-[ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
+        --name=4kq32t1wr --bs=$BLOCK_SIZE --iodepth=32 --numjobs=1 --rw=randwrite > $Q32T1 && [ $? != 0 ] && exit 1
 
 show_result $Q32T1 32 1 $BLOCK_SIZE randread
 
-[ $PARSE -eq 0 ] && 
+[ $PARSE = 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename=$TEST_FILE --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
         --name=4kq1t1rd --bs=$BLOCK_SIZE --iodepth=1 --numjobs=1 --rw=randread \
-        --name=4kq1t1wr --bs=$BLOCK_SIZE --iodepth=1 --numjobs=1 --rw=randwrite > $Q1T1 
-
-[ $? -ne 0 ] && [ $PARSE -eq 0 ] && exit 1
+        --name=4kq1t1wr --bs=$BLOCK_SIZE --iodepth=1 --numjobs=1 --rw=randwrite > $Q1T1 && [ $? != 0 ] && exit 1
 
 show_result $Q1T1 1 1 $BLOCK_SIZE randread
 
-[ $F -ne 1 ] && [ -f $TEST_FILE ] && rm $TEST_FILE
+[ $BLOCKDEV = 0 ] && [ -f $TEST_FILE ] && rm $TEST_FILE
