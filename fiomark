@@ -13,6 +13,7 @@ PARSE=0
 # windows fix
 #THREAD=--thread
 BLOCK_SIZE=4
+SEC=5
 
 if [ -z $HOME ]; then
 # windows
@@ -95,6 +96,18 @@ read_arg() {
 	8g)
 	    SIZE=8192
 	;;
+	16g)
+	    SIZE=16384
+	    SEC=10
+	;;
+	32g)
+	    SIZE=32768
+	    SEC=20
+	;;
+	64g)
+	    SIZE=65536
+	    SEC=30
+	;;
         parse)
             PARSE=1
         ;;
@@ -148,7 +161,7 @@ Q1T1=$HOME_DIR/".fiomark4"
 QSIZE=$(($SIZE/32))
 SIZE=$SIZE"m"
 QSIZE=$QSIZE"m"
-RUNTIME=$(($LOOP*5))
+RUNTIME=$(($LOOP*$SEC))
 BLOCK_SIZE=$BLOCK_SIZE"k"
 
 show_result() {
