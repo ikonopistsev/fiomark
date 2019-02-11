@@ -193,10 +193,12 @@ if [ $PARSE = 0 ]; then
         read -n1 ANS && [ $ANS != "y" ] && exit 1
         echo ""
     else
-        if [ $F = 1 ]; then 
-            echo -n "overwrite file $TEST_FILE ? [y/N] "
-            read -n1 ANS && [ $ANS != "y" ] && exit 1
-            echo ""
+        if [ $F = 1 ]; then
+	    if [ -z $HOMEDRIVE ]; then 
+            	echo -n "overwrite file $TEST_FILE ? [y/N] "
+            	read -n1 ANS && [ $ANS != "y" ] && exit 1
+            	echo ""
+	    fi
         else
             if [ ! -d $TEST_DIR ]; then
                 echo "Error path: $TEST_DIR"
