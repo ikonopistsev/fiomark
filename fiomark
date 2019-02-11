@@ -137,7 +137,7 @@ read_arg() {
 	    THREAD=--thread
 	;;
         *)
-	    [ -f "$1" ] && TEST_FILE=$1 && TEST_DIR=$(basename $1) && F=1
+	    [ -b "$1" ] && TEST_FILE=$1 && TEST_DIR="" && F=1
             [ -d "$1" ] && TEST_DIR=$1 && TEST_FILE=$TEST_DIR/$TEST
         ;;
     esac
@@ -148,7 +148,7 @@ do
     read_arg $var
 done
 
-if [ $F = 1 ]; then
+if [ $F -eq 1 ]; then
     echo "overwrite file $TEST_FILE? [y]"
     read -n1 ANS
     [ $ANS != "y" ] && exit 1
@@ -257,4 +257,4 @@ show_result $Q32T1 32 1 $BLOCK_SIZE randread
 
 show_result $Q1T1 1 1 $BLOCK_SIZE randread
 
-[ $F != 1 ] && [ -f $TEST_FILE ] && rm $TEST_FILE
+[ $F -ne 1 ] && [ -f $TEST_FILE ] && rm $TEST_FILE
