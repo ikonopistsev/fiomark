@@ -18,6 +18,8 @@ TEST_NAME=".fiomark.test"
 TEST_FILE=$TEST_DIR/$TEST_NAME
 BLOCKDEV=0
 F=0
+DPT=8
+THR=8
 
 #detect home
 if [ -z $HOME ]; then
@@ -45,6 +47,30 @@ read_arg() {
         5)
             LOOP=5
         ;;
+	4q)
+	    DPT=8
+	;;
+	16q)
+	    DPT=16
+	;;
+	32q)
+	    DPT=32
+	;;
+	64q)
+	    DPT=64
+	;;
+	4t)
+	    THR=4
+	;;
+	16t)
+	    THR=16
+	;;
+	32t)
+	    THR=32
+	;;
+	64t)
+	    THR=64
+	;;
         8k)
             BLOCK_SIZE=8
         ;;
@@ -121,6 +147,21 @@ read_arg() {
         parse)
             PARSE=1
         ;;
+        'sync')
+            ENGINE='sync'
+        ;;
+        psync)
+            ENGINE=psync
+        ;;
+        vsync)
+            ENGINE=vsync
+        ;;
+        pvsync)
+            ENGINE=pvsync
+        ;;
+        pvsync2)
+            ENGINE=pvsync2
+        ;;
         posixaio)
             ENGINE=posixaio
         ;;
@@ -171,7 +212,7 @@ read_arg() {
                         TEST_DIR="$1"
                         TEST_FILE=$1/$TEST_NAME
                         BLOCKDEV=0
-                        F=0                        
+                        F=0
                     fi
                 fi
             fi
@@ -266,14 +307,22 @@ printf "%7s\t%7s\t%12s %12s\n" " " " " "Read [MB/s]"  "Write [MB/s]"
 
 show_result $S321 32 1 $QSIZE read
 
+sync
+
+sleep 2
+
 #exit 0
 
 [ $PARSE = 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename=$TEST_FILE --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
-        --name=4kq8t8rd --bs=$BLOCK_SIZE --iodepth=8 --numjobs=8 --rw=randread \
-        --name=4kq8t8wr --bs=$BLOCK_SIZE --iodepth=8 --numjobs=8 --rw=randwrite > $Q8T8 && [ $? != 0 ] && exit 1
+        --name=4kq8t8rd --bs=$BLOCK_SIZE --iodepth=$DPT --numjobs=$THR --rw=randread \
+        --name=4kq8t8wr --bs=$BLOCK_SIZE --iodepth=$DPT --numjobs=$THR --rw=randwrite > $Q8T8 && [ $? != 0 ] && exit 1
 
-show_result $Q8T8 8 8 $BLOCK_SIZE randread
+show_result $Q8T8 $DPT $THR $BLOCK_SIZE randread
+
+sync
+
+sleep 2
 
 [ $PARSE = 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename=$TEST_FILE --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
@@ -281,6 +330,10 @@ show_result $Q8T8 8 8 $BLOCK_SIZE randread
         --name=4kq32t1wr --bs=$BLOCK_SIZE --iodepth=32 --numjobs=1 --rw=randwrite > $Q32T1 && [ $? != 0 ] && exit 1
 
 show_result $Q32T1 32 1 $BLOCK_SIZE randread
+
+sync
+
+sleep 2
 
 [ $PARSE = 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename=$TEST_FILE --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
