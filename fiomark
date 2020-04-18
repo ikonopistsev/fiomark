@@ -35,6 +35,9 @@ S321=$HOME_DIR/".fiomark1"
 Q8T8=$HOME_DIR/".fiomark2"
 Q32T1=$HOME_DIR/".fiomark3"
 Q1T1=$HOME_DIR/".fiomark4"
+SEQ1M=$HOME_DIR/".fiomark5"
+SEQ11M=$HOME_DIR/".fiomark6"
+Q32T16=$HOME_DIR/".fiomark7"
 
 read_arg() {
     case "$1" in
@@ -168,6 +171,9 @@ read_arg() {
         libaio)
             ENGINE=libaio
         ;;
+	io_uring)
+		ENGINE=io_uring
+	;;
         mmap)
             ENGINE=mmap
         ;;
@@ -296,7 +302,34 @@ fi
 
 [ -f $HEADER ] && cat $HEADER
 
-echo "Running..."
+echo "CRM7 Running... "
+
+[ $PARSE = 0 ] && [ $SEQ = 1 ] &&
+    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$TEST_FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
+        --name=seq1mrd --bs=1m --iodepth=8 --numjobs=1 --rw=read \
+        --name=seq1mwr --bs=1m --iodepth=8 --numjobs=1 --rw=write > $SEQ1M && [ $? != 0 ] && exit 1
+
+printf "%7s\t%7s\t%12s %12s\n" " " " " "Read [MB/s]"  "Write [MB/s]"
+
+show_result $SEQ1M 8 1 1m read
+
+[ $PARSE = 0 ] && [ $SEQ = 1 ] &&
+    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$TEST_FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
+        --name=seq1mrd --bs=1m --iodepth=1 --numjobs=1 --rw=read \
+        --name=seq1mwr --bs=1m --iodepth=1 --numjobs=1 --rw=write > $SEQ11M && [ $? != 0 ] && exit 1
+
+printf "%7s\t%7s\t%12s %12s\n" " " " " "Read [MB/s]"  "Write [MB/s]"
+
+show_result $SEQ11M 1 1 1m read
+
+[ $PARSE = 0 ] && 
+    fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename=$TEST_FILE --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
+        --name=4kq32t16rd --bs=$BLOCK_SIZE --iodepth=32 --numjobs=16 --rw=randread \
+        --name=4kq32t16wr --bs=$BLOCK_SIZE --iodepth=32 --numjobs=16 --rw=randwrite > $Q32T16 && [ $? != 0 ] && exit 1
+
+show_result $Q32T16 32 16 $BLOCK_SIZE randread
+
+echo "CRM6 Running... "
 
 [ $PARSE = 0 ] && [ $SEQ = 1 ] &&
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename="$TEST_FILE" --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
@@ -307,12 +340,6 @@ printf "%7s\t%7s\t%12s %12s\n" " " " " "Read [MB/s]"  "Write [MB/s]"
 
 show_result $S321 32 1 $QSIZE read
 
-sync
-
-sleep 2
-
-#exit 0
-
 [ $PARSE = 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename=$TEST_FILE --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
         --name=4kq8t8rd --bs=$BLOCK_SIZE --iodepth=$DPT --numjobs=$THR --rw=randread \
@@ -320,20 +347,12 @@ sleep 2
 
 show_result $Q8T8 $DPT $THR $BLOCK_SIZE randread
 
-sync
-
-sleep 2
-
 [ $PARSE = 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename=$TEST_FILE --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
         --name=4kq32t1rd --bs=$BLOCK_SIZE --iodepth=32 --numjobs=1 --rw=randread \
         --name=4kq32t1wr --bs=$BLOCK_SIZE --iodepth=32 --numjobs=1 --rw=randwrite > $Q32T1 && [ $? != 0 ] && exit 1
 
 show_result $Q32T1 32 1 $BLOCK_SIZE randread
-
-sync
-
-sleep 2
 
 [ $PARSE = 0 ] && 
     fio --runtime=$RUNTIME --loops=$LOOP --size=$SIZE --filename=$TEST_FILE --stonewall --ioengine=$ENGINE --direct=$DIRECTIO --zero_buffers=$WRITEZERO --output-format=json $THREAD \
