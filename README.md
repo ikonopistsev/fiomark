@@ -17,7 +17,7 @@ linux
 
 macosx
 
-                ./fiomark derect /test_path
+                ./fiomark direct /test_path
 
 windows
 
