@@ -29,6 +29,17 @@ else
     HOME_DIR=$HOME
 fi
 
+JQEXE=jq
+if [ -f "./jq-win64.exe" ]; then
+	JQEXE="./jq-win64.exe"
+fi
+if [ -f "./jq-win32.exe" ]; then
+	JQEXE="./jq-win32.exe"
+fi
+if [ -f "./jq.exe" ]; then
+	JQEXE="./jq.exe"
+fi
+
 #reports
 HEADER=$HOME_DIR/".fiomark"
 S321=$HOME_DIR/".fiomark1"
@@ -264,7 +275,7 @@ BLOCK_SIZE=$BLOCK_SIZE"k"
 show_result() {
     [ ! -f $1 ] && echo "no file: $1" && exit 1
     
-    P=$(jq -r .time $1)
+    P=$($JQEXE -r .time $1)
     [ $? -ne 0 ] && exit 1
 
     D=1000 # in crystal mark   
@@ -273,34 +284,36 @@ show_result() {
     S=$4
     L=$5
 
-    RD=$(jq -r '.jobs[].read.bw' $1|jq -s ".|add/$D")
-    WR=$(jq -r '.jobs[].write.bw' $1|jq -s ".|add/$D")
-    RDI=$(jq -r '.jobs[].read.iops' $1|jq -s '.|add')
-    WRI=$(jq -r '.jobs[].write.iops' $1|jq -s '.|add')
-    #Q=$(jq -r '.jobs[0]."job options".iodepth' $1)
-    #T=$(jq -r '.jobs[0]."job options".numjobs' $1)
-    #S=$(jq -r '.jobs[0]."job options".bs' $1)
-    #L=$(jq -r '.jobs[0]."job options".rw' $1)
-    #E=$(jq -r '."global options".ioengine' $1)
-    #D=$(jq -r '."global options".direct' $1)
-    #SZ=$(jq -r '."global options".size' $1)
+    RD=$($JQEXE -r '.jobs[].read.bw' $1|$JQEXE -s ".|add/$D|.*1000|round|./1000")
+    WR=$($JQEXE -r '.jobs[].write.bw' $1|$JQEXE -s ".|add/$D|.*1000|round|./1000")
+    RDI=$($JQEXE -r '.jobs[].read.iops' $1|$JQEXE -s '.|add|.*1000|round|./1000')
+    WRI=$($JQEXE -r '.jobs[].write.iops' $1|$JQEXE -s '.|add|.*1000|round|./1000')
+    #Q=$($JQEXE -r '.jobs[0]."job options".iodepth' $1)
+    #T=$($JQEXE -r '.jobs[0]."job options".numjobs' $1)
+    #S=$($JQEXE -r '.jobs[0]."job options".bs' $1)
+    #L=$($JQEXE -r '.jobs[0]."job options".rw' $1)
+    #E=$($JQEXE -r '."global options".ioengine' $1)
+    #D=$($JQEXE -r '."global options".direct' $1)
+    #SZ=$($JQEXE -r '."global options".size' $1)
     #[ "$L" = "read" ] && echo -n "seq " 
     #[ "$L" = "write" ] && echo -n "seq "
     #[ "$D" = 1 ] && echo -n "direct "
     #echo $E $SZ
     OPT="Q"$Q"T"$T
-    printf "%7s\t%7s\t%12.3f %12.3f\n" $S $OPT $RD $WR
-    printf "%7s\t%7s\t%12.1f %12.1f\n\n"  " " "iops" $RDI $WRI
+    echo -e "$S\t$OPT\t$RD\t$WR"
+    #printf "%7s\t%7s\t%12.3f %12.3f\n" $S $OPT $RD $WR
+    echo -e " \tiops\t$RDI\t$WRI"
+    #printf "%7s\t%7s\t%12.1f %12.1f\n\n"  " " "iops" $RDI $WRI
 }
 
 if [ $PARSE = 0 ]; then
-    echo -n "$ENGINE " > $HEADER
-    [ $DIRECTIO = 1 ] && echo -n "direct " >> $HEADER
-    [ $WRITEZERO = 1 ] && echo -n "zero " >> $HEADER
-    echo "$SIZE loop=$LOOP $TEST_DIR" >> $HEADER
+    echo -ne "[ \"$ENGINE\" " > $HEADER
+    [ $DIRECTIO = 1 ] && echo -ne ", \"direct\" " >> $HEADER
+    [ $WRITEZERO = 1 ] && echo -ne ", \"zero\" " >> $HEADER
+    echo ", \"$SIZE\", \"loop=$LOOP\", \"$TEST_DIR\" ]" >> $HEADER
 fi
 
-[ -f $HEADER ] && cat $HEADER
+[ -f $HEADER ] && $JQEXE -r "." $HEADER
 
 echo "CRM7 Running... "
 
@@ -309,7 +322,8 @@ echo "CRM7 Running... "
         --name=seq1mrd --bs=1m --iodepth=8 --numjobs=1 --rw=read \
         --name=seq1mwr --bs=1m --iodepth=8 --numjobs=1 --rw=write > $SEQ1M && [ $? != 0 ] && exit 1
 
-printf "%7s\t%7s\t%12s %12s\n" " " " " "Read [MB/s]"  "Write [MB/s]"
+echo -e "       \t       \tRead [MB/s]\tWrite [MB/s]"
+#printf "%7s\t%7s\t%12s %12s\n" " " " " "Read [MB/s]"  "Write [MB/s]"
 
 show_result $SEQ1M 8 1 1m read
 
@@ -318,7 +332,8 @@ show_result $SEQ1M 8 1 1m read
         --name=seq1mrd --bs=1m --iodepth=1 --numjobs=1 --rw=read \
         --name=seq1mwr --bs=1m --iodepth=1 --numjobs=1 --rw=write > $SEQ11M && [ $? != 0 ] && exit 1
 
-printf "%7s\t%7s\t%12s %12s\n" " " " " "Read [MB/s]"  "Write [MB/s]"
+echo -e "       \t       \tRead [MB/s]\tWrite [MB/s]"
+#printf "%7s\t%7s\t%12s %12s\n" " " " " "Read [MB/s]"  "Write [MB/s]"
 
 show_result $SEQ11M 1 1 1m read
 
@@ -336,7 +351,8 @@ echo "CRM6 Running... "
         --name=q32t1rd --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=read \
         --name=q32t1wr --bs=$QSIZE --iodepth=32 --numjobs=1 --rw=write > $S321 && [ $? != 0 ] && exit 1
 
-printf "%7s\t%7s\t%12s %12s\n" " " " " "Read [MB/s]"  "Write [MB/s]"
+echo -e "       \t       \tRead [MB/s]\tWrite [MB/s]"
+#printf "%7s\t%7s\t%12s %12s\n" " " " " "Read [MB/s]"  "Write [MB/s]"
 
 show_result $S321 32 1 $QSIZE read
 
@@ -361,4 +377,4 @@ show_result $Q32T1 32 1 $BLOCK_SIZE randread
 
 show_result $Q1T1 1 1 $BLOCK_SIZE randread
 
-[ $BLOCKDEV = 0 ] && [ -f $TEST_FILE ] && rm $TEST_FILE
+[ $BLOCKDEV = 0 ] && [ -f $TEST_FILE ] && echo "rm" > $TEST_FILE
